@@ -5,7 +5,8 @@ MAINTAINER Andrey Korin "a.korin@outlook.com"
 # Install Chromium build dependencies and JDK 7
 RUN echo "deb http://archive.ubuntu.com/ubuntu trusty multiverse" >> /etc/apt/sources.list # && dpkg --add-architecture i386
 RUN apt-get update && apt-get install -qy git build-essential clang curl openjdk-7-jdk
-RUN curl -SL https://src.chromium.org/chrome/trunk/src/build/install-build-deps.sh > /tmp/install-build-deps.sh \
+RUN curl -SL https://chromium.googlesource.com/chromium/src/+/master/build/install-build-deps.sh?format=TEXT \
+ | base64 --decode > /tmp/install-build-deps.sh \
  && chmod +x /tmp/install-build-deps.sh \
   && /tmp/install-build-deps.sh --no-prompt --no-arm --no-chromeos-fonts --no-nacl \
    && rm /tmp/install-build-deps.sh
@@ -27,6 +28,8 @@ RUN echo "\n# Add Chromium's depot_tools to the PATH." >> .bashrc \
 # Force Chromium to build with clang.
 RUN echo "{ 'GYP_DEFINES': 'clang=1' }" > /home/user/chromium.gyp_env
 
+# https://webrtc.org/native-code/development/
+
 # Download source code.
 RUN mkdir webrtc-checkout
 WORKDIR webrtc-checkout
@@ -34,9 +37,9 @@ RUN fetch --nohooks webrtc
 
 RUN gclient sync -j1 -v -v -v --ignore_locks --no-history
 
-WORKDIR src
-RUN python webrtc/build/gyp_webrtc
-
 # Build
-RUN ninja -C out/Release unpack_aecdump
+WORKDIR src
+RUN gn gen out/Default --args='is_debug=false'
+RUN ninja -C out/Default unpack_aecdump
 
+CMD ["cat", "/home/user/webrtc-checkout/src/out/Default/unpack_aecdump"]
